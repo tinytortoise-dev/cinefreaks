@@ -1,2 +1,2 @@
-# myfirstproject
-This is my first web app project.
+# cinefreaks
+This is a project that makes cinema freak's life more exiting. 
