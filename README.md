@@ -1,5 +1,2 @@
 # cinefreaks
-This is a project that makes cinema freak's life more exiting. 
-You can post cinema reviews and see other reviews.
-
-modified in develop branch
+Create cinema review web site. You can post your film review and add a comment on other's review.
