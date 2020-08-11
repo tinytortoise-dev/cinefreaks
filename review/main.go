@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -118,6 +119,23 @@ func createReviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	new.ReviewID = reviewId
 	reviews = append(reviews, new)
+	// pass reviewId to user service
+	url := fmt.Sprintf("http://localhost:8000/users/%s/reviewid/%s", new.UserID, reviewId)
+	fmt.Println(url)
+	resp, err := http.Post(url, "application/json", nil)
+	defer resp.Body.Close()
+	if err != nil {
+		w.Write([]byte("error when sending reviewId to user service"))
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		w.Write([]byte("error when reading response body from user service"))
+		return
+	}
+	fmt.Println(string(body))
+
+	// if reviewId was successfully added to a user, ok response
 	w.Write([]byte("review created"))
 	return
 }
