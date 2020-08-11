@@ -47,7 +47,8 @@ func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
 			foundUser = true
 			converted, err := strconv.Atoi(reviewId)
 			if err != nil {
-				// error handling
+				w.Write([]byte("error when converting string to int"))
+				return
 			}
 			user.ReviewIds = append(user.ReviewIds, converted)
 			users[i] = user
@@ -70,7 +71,8 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			// ids := struct{ reviewIds []int }{u.ReviewIds}
 			res, err := json.Marshal(u.ReviewIds)
 			if err != nil {
-				// error handling
+				w.Write([]byte("error when marshaling"))
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(res)
