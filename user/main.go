@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -16,7 +15,7 @@ type User struct {
 	UserID      string
 	MailAddress string
 	Password    string
-	ReviewIds   []int
+	ReviewIds   []string
 }
 
 var users []User
@@ -45,12 +44,7 @@ func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
 		if userId == u.UserID {
 			user = u
 			foundUser = true
-			converted, err := strconv.Atoi(reviewId)
-			if err != nil {
-				w.Write([]byte("error when converting string to int"))
-				return
-			}
-			user.ReviewIds = append(user.ReviewIds, converted)
+			user.ReviewIds = append(user.ReviewIds, reviewId)
 			users[i] = user
 		}
 
