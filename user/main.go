@@ -29,12 +29,14 @@ func main() {
 	r.HandleFunc("/users", userHandler)
 	http.Handle("/", r)
 
+	fmt.Println("updated")
 	fmt.Println("user service server started on port 8000")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 
 }
 
 func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("addUserReviewHandler was called")
 	vars := mux.Vars(r)
 	userId := vars["id"]
 	reviewId := vars["reviewId"]

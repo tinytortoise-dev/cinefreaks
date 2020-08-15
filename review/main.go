@@ -33,6 +33,7 @@ func main() {
 	r.HandleFunc("/reviews", createReviewHandler).Methods("POST")
 	http.Handle("/", r)
 
+	fmt.Println("updated to latest")
 	fmt.Println("review service server started on port 8001")
 	log.Fatal(http.ListenAndServe(":8001", nil))
 }
@@ -120,7 +121,7 @@ func createReviewHandler(w http.ResponseWriter, r *http.Request) {
 	new.ReviewID = reviewId
 	reviews = append(reviews, new)
 	// pass reviewId to user service
-	url := fmt.Sprintf("http://localhost:8000/users/%s/reviewid/%s", new.UserID, reviewId)
+	url := fmt.Sprintf("http://user-clusterip-srv:8000/users/%s/reviewid/%s", new.UserID, reviewId)
 	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", nil)
 	defer resp.Body.Close()
