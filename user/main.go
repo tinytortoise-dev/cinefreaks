@@ -29,7 +29,7 @@ func main() {
 	r.HandleFunc("/users", userHandler)
 	http.Handle("/", r)
 
-	fmt.Println("updated")
+	fmt.Println("updated2")
 	fmt.Println("user service server started on port 8000")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 
