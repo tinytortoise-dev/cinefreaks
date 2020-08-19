@@ -29,7 +29,6 @@ func main() {
 	r.HandleFunc("/users", userHandler)
 	http.Handle("/", r)
 
-	fmt.Println("updated2")
 	fmt.Println("user service server started on port 8000")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 
@@ -148,4 +147,39 @@ func duplicateUser(users []User, user User) error {
 		}
 	}
 	return nil
+}
+
+func jsonError(w http.ResponseWriter, err interface{}, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(err)
+}
+
+func (e *ErrorJson) setMessage(message string) {
+	e.message = message
+}
+
+func (e *ErrorJson) setData(data string) {
+	e.data = data
+}
+
+func (e ErrorJson) getErrorJson() ErrorJson {
+	return e
+}
+
+func (e *ErrorJsons) setErrorJsons(errorJsons []ErrorJson) {
+	e.Errors = errorJsons
+}
+
+func (e ErrorJsons) getErrorJsons() ErrorJsons {
+	return e
+}
+
+type ErrorJson struct {
+	message string
+	data    string // optional
+}
+
+type ErrorJsons struct {
+	Errors []ErrorJson
 }
