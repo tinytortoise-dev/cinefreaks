@@ -124,9 +124,16 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error when reaing body", http.StatusBadRequest)
 			return
 		}
-		err = duplicateUser(users, user)
+		data, err := duplicateUser(users, user)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			errJson := ErrorJson{}
+			errJson.setMessage(err.Error())
+			errJson.setData(data)
+			var errs []ErrorJson
+			errs = append(errs, errJson)
+			res := ErrorJsons{}
+			res.setErrorJsons(errs)
+			jsonError(w, res, http.StatusBadRequest)
 			return
 		}
 		users = append(users, user)
@@ -137,16 +144,16 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func duplicateUser(users []User, user User) error {
+func duplicateUser(users []User, user User) (string, error) {
 	for _, u := range users {
 		if u.UserID == user.UserID {
-			return errors.New("This userId is already in use")
+			return user.UserID, errors.New("This userId is already in use")
 		}
 		if u.MailAddress == user.MailAddress {
-			return errors.New("This mailAddress is already in use")
+			return user.MailAddress, errors.New("This mailAddress is already in use")
 		}
 	}
-	return nil
+	return "", nil
 }
 
 func jsonError(w http.ResponseWriter, err interface{}, code int) {
@@ -156,11 +163,11 @@ func jsonError(w http.ResponseWriter, err interface{}, code int) {
 }
 
 func (e *ErrorJson) setMessage(message string) {
-	e.message = message
+	e.Message = message
 }
 
 func (e *ErrorJson) setData(data string) {
-	e.data = data
+	e.Data = data
 }
 
 func (e ErrorJson) getErrorJson() ErrorJson {
@@ -176,8 +183,8 @@ func (e ErrorJsons) getErrorJsons() ErrorJsons {
 }
 
 type ErrorJson struct {
-	message string
-	data    string // optional
+	Message string
+	Data    string // optional
 }
 
 type ErrorJsons struct {
