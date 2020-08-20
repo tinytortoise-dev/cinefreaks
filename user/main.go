@@ -12,10 +12,10 @@ import (
 
 // User represents a single user information
 type User struct {
-	UserID      string
-	MailAddress string
-	Password    string
-	ReviewIds   []string
+	UserID      string   `json:"userId"`
+	MailAddress string   `json:"mailAddress"`
+	Password    string   `json:"password"`
+	ReviewIds   []string `json:"reviewIds"`
 }
 
 var users []User
@@ -159,7 +159,12 @@ func duplicateUser(users []User, user User) (string, error) {
 func jsonError(w http.ResponseWriter, err interface{}, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(err)
+	b, err := json.Marshal(err)
+	if err != nil {
+		http.Error(w, "error when marshaling struct", http.StatusInternalServerError)
+	}
+	// json.NewEncoder(w).Encode(err)
+	http.Error(w, string(b), http.StatusBadRequest)
 }
 
 func (e *ErrorJson) setMessage(message string) {
@@ -183,10 +188,10 @@ func (e ErrorJsons) getErrorJsons() ErrorJsons {
 }
 
 type ErrorJson struct {
-	Message string
-	Data    string // optional
+	Message string `json:"message"` // no space between json: and value
+	Data    string `json:"data"`    // optional
 }
 
 type ErrorJsons struct {
-	Errors []ErrorJson
+	Errors []ErrorJson `json:"errors"`
 }
