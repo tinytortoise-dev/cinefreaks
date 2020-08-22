@@ -8,14 +8,15 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/tinytortoise-dev/cinefreaks/user/helper"
 )
 
 // User represents a single user information
 type User struct {
-	UserID      string
-	MailAddress string
-	Password    string
-	ReviewIds   []string
+	UserID      string   `json:"userId"`
+	MailAddress string   `json:"mailAddress"`
+	Password    string   `json:"password"`
+	ReviewIds   []string `json:"reviewIds"`
 }
 
 var users []User
@@ -29,14 +30,12 @@ func main() {
 	r.HandleFunc("/users", userHandler)
 	http.Handle("/", r)
 
-	fmt.Println("updated2")
 	fmt.Println("user service server started on port 8000")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 
 }
 
 func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("addUserReviewHandler was called")
 	vars := mux.Vars(r)
 	userId := vars["id"]
 	reviewId := vars["reviewId"]
@@ -52,7 +51,7 @@ func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 	if !foundUser {
-		w.Write([]byte("no such user found"))
+		helper.NotFound(w)
 		return
 	}
 	w.Write([]byte("review added"))
@@ -64,10 +63,9 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 	// currently, return review ids. in the future, return the slices of actual review struct
 	for _, u := range users {
 		if userId == u.UserID {
-			// ids := struct{ reviewIds []int }{u.ReviewIds}
 			res, err := json.Marshal(u.ReviewIds)
 			if err != nil {
-				w.Write([]byte("error when marshaling"))
+				helper.ServerError(w)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -75,7 +73,7 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Write([]byte("no such user found"))
+	helper.NotFound(w)
 }
 
 func singleUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,12 +88,12 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !foundUser {
-		w.Write([]byte("no such user found"))
+		helper.NotFound(w)
 		return
 	}
 	res, err := json.Marshal(user)
 	if err != nil {
-		http.Error(w, "error when marshaling a single user struct", http.StatusInternalServerError)
+		helper.ServerError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -104,14 +102,14 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/users" {
-		http.Error(w, "404 Not found", http.StatusNotFound)
+		helper.NotFound(w)
 		return
 	}
 
 	if r.Method == "GET" {
 		res, err := json.Marshal(users)
 		if err != nil {
-			http.Error(w, "error when marshaling user structs", http.StatusInternalServerError)
+			helper.ServerError(w)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -122,30 +120,29 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		var user User
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil {
-			http.Error(w, "error when reaing body", http.StatusBadRequest)
+			helper.ServerError(w)
 			return
 		}
-		err = duplicateUser(users, user)
+		data, err := duplicateUser(users, user)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			res := helper.ErrorJsons{}
+			res.AddMessageAndDataEntry(err.Error(), data)
+			res.JsonError(w, http.StatusBadRequest)
 			return
 		}
 		users = append(users, user)
-		fmt.Println("created a new user")
-		fmt.Println(user)
-		fmt.Fprintf(w, "user was created")
+		w.Write([]byte("user created"))
 	}
-
 }
 
-func duplicateUser(users []User, user User) error {
+func duplicateUser(users []User, user User) (string, error) {
 	for _, u := range users {
 		if u.UserID == user.UserID {
-			return errors.New("This userId is already in use")
+			return user.UserID, errors.New("This userId is already in use")
 		}
 		if u.MailAddress == user.MailAddress {
-			return errors.New("This mailAddress is already in use")
+			return user.MailAddress, errors.New("This mailAddress is already in use")
 		}
 	}
-	return nil
+	return "", nil
 }
