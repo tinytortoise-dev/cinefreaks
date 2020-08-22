@@ -35,7 +35,6 @@ func main() {
 }
 
 func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("addUserReviewHandler was called")
 	vars := mux.Vars(r)
 	userId := vars["id"]
 	reviewId := vars["reviewId"]
@@ -51,7 +50,7 @@ func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 	if !foundUser {
-		w.Write([]byte("no such user found"))
+		notFound(w)
 		return
 	}
 	w.Write([]byte("review added"))
@@ -63,10 +62,9 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 	// currently, return review ids. in the future, return the slices of actual review struct
 	for _, u := range users {
 		if userId == u.UserID {
-			// ids := struct{ reviewIds []int }{u.ReviewIds}
 			res, err := json.Marshal(u.ReviewIds)
 			if err != nil {
-				w.Write([]byte("error when marshaling"))
+				serverError(w)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -74,7 +72,7 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Write([]byte("no such user found"))
+	notFound(w)
 }
 
 func singleUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -89,12 +87,12 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !foundUser {
-		w.Write([]byte("no such user found"))
+		notFound(w)
 		return
 	}
 	res, err := json.Marshal(user)
 	if err != nil {
-		http.Error(w, "error when marshaling a single user struct", http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -103,14 +101,14 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/users" {
-		http.Error(w, "404 Not found", http.StatusNotFound)
+		notFound(w)
 		return
 	}
 
 	if r.Method == "GET" {
 		res, err := json.Marshal(users)
 		if err != nil {
-			http.Error(w, "error when marshaling user structs", http.StatusInternalServerError)
+			serverError(w)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -121,7 +119,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		var user User
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil {
-			http.Error(w, "error when reaing body", http.StatusBadRequest)
+			serverError(w)
 			return
 		}
 		data, err := duplicateUser(users, user)
@@ -132,9 +130,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		users = append(users, user)
-		fmt.Println("created a new user")
-		fmt.Println(user)
-		fmt.Fprintf(w, "user was created")
+		w.Write([]byte("user created"))
 	}
 
 }
@@ -202,4 +198,25 @@ type ErrorJson struct {
 
 type ErrorJsons struct {
 	Errors []ErrorJson `json:"errors"`
+}
+
+func serverError(w http.ResponseWriter) {
+	res := ErrorJsons{}
+	res.addMessageEntry(http.StatusText(http.StatusInternalServerError))
+	res.jsonError(w, http.StatusInternalServerError)
+	return
+}
+
+func clientError(w http.ResponseWriter) {
+	res := ErrorJsons{}
+	res.addMessageEntry(http.StatusText(http.StatusBadRequest))
+	res.jsonError(w, http.StatusBadRequest)
+	return
+}
+
+func notFound(w http.ResponseWriter) {
+	res := ErrorJsons{}
+	res.addMessageEntry(http.StatusText(http.StatusNotFound))
+	res.jsonError(w, http.StatusNotFound)
+	return
 }
