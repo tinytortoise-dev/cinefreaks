@@ -126,14 +126,9 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		data, err := duplicateUser(users, user)
 		if err != nil {
-			errJson := ErrorJson{}
-			errJson.setMessage(err.Error())
-			errJson.setData(data)
-			var errs []ErrorJson
-			errs = append(errs, errJson)
 			res := ErrorJsons{}
-			res.setErrorJsons(errs)
-			jsonError(w, res, http.StatusBadRequest)
+			res.addMessageAndDataEntry(err.Error(), data)
+			res.jsonError(w, http.StatusBadRequest)
 			return
 		}
 		users = append(users, user)
@@ -156,15 +151,28 @@ func duplicateUser(users []User, user User) (string, error) {
 	return "", nil
 }
 
-func jsonError(w http.ResponseWriter, err interface{}, code int) {
+func (e *ErrorJsons) addMessageAndDataEntry(message, data string) {
+	errJson := ErrorJson{}
+	errJson.setMessage(message)
+	errJson.setData(data)
+	e.addErrorJson(errJson)
+}
+
+func (e *ErrorJsons) addMessageEntry(message string) {
+	errJson := ErrorJson{}
+	errJson.setMessage(message)
+	e.addErrorJson(errJson)
+}
+
+func (e *ErrorJsons) jsonError(w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	b, err := json.Marshal(err)
+	b, err := json.Marshal(e)
 	if err != nil {
 		http.Error(w, "error when marshaling struct", http.StatusInternalServerError)
 	}
 	// json.NewEncoder(w).Encode(err)
-	http.Error(w, string(b), http.StatusBadRequest)
+	http.Error(w, string(b), code)
 }
 
 func (e *ErrorJson) setMessage(message string) {
@@ -175,17 +183,17 @@ func (e *ErrorJson) setData(data string) {
 	e.Data = data
 }
 
-func (e ErrorJson) getErrorJson() ErrorJson {
-	return e
+// func (e ErrorJson) getErrorJson() ErrorJson {
+// 	return e
+// }
+
+func (e *ErrorJsons) addErrorJson(errorJson ErrorJson) {
+	e.Errors = append(e.Errors, errorJson)
 }
 
-func (e *ErrorJsons) setErrorJsons(errorJsons []ErrorJson) {
-	e.Errors = errorJsons
-}
-
-func (e ErrorJsons) getErrorJsons() ErrorJsons {
-	return e
-}
+// func (e ErrorJsons) getErrorJsons() ErrorJsons {
+// 	return e
+// }
 
 type ErrorJson struct {
 	Message string `json:"message"` // no space between json: and value
