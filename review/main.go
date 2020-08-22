@@ -7,45 +7,46 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/tinytortoise-dev/cinefreaks/review/helper"
+
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
 // Review represents a single review data
 type Review struct {
-	ReviewID  string
-	UserID    string
-	Title     string
-	FilmName  string
-	Comment   string
-	Score     int
-	IsDeleted bool
+	ReviewID  string `json:"reviewId"`
+	UserID    string `json:"userId"`
+	Title     string `json:"title"`
+	FilmName  string `json:"filmName"`
+	Comment   string `json:"comment"`
+	Score     int    `json:"score"`
+	IsDeleted bool   `json:"isDeleted"`
 }
 
 var reviews []Review
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/reviews/{id}", singleReviewHandler).Methods("GET")
-	r.HandleFunc("/reviews/{id}", updateReviewHandler).Methods("PUT")
-	r.HandleFunc("/reviews/{id}", deleteReviewHandler).Methods("DELETE")
-	r.HandleFunc("/reviews", reviewHandler).Methods("GET")
-	r.HandleFunc("/reviews", createReviewHandler).Methods("POST")
+	r.HandleFunc("/reviews/{id}", getReviewByReviewId).Methods("GET")
+	r.HandleFunc("/reviews/{id}", updateReviewByReviewId).Methods("PUT")
+	r.HandleFunc("/reviews/{id}", deleteReviewByReviewId).Methods("DELETE")
+	r.HandleFunc("/reviews", getReviews).Methods("GET")
+	r.HandleFunc("/reviews", addReview).Methods("POST")
 	http.Handle("/", r)
 
-	fmt.Println("updated to latest")
 	fmt.Println("review service server started on port 8001")
 	log.Fatal(http.ListenAndServe(":8001", nil))
 }
 
-func singleReviewHandler(w http.ResponseWriter, r *http.Request) {
+func getReviewByReviewId(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	givenId := vars["id"]
 	for _, review := range reviews {
 		if review.ReviewID == givenId {
 			res, err := json.Marshal(review)
 			if err != nil {
-				w.Write([]byte("error when marshaling"))
+				helper.ServerError(w)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -53,11 +54,11 @@ func singleReviewHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Write([]byte("no such review found"))
+	helper.NotFound(w)
 	return
 }
 
-func updateReviewHandler(w http.ResponseWriter, r *http.Request) {
+func updateReviewByReviewId(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	givenId := vars["id"]
 	var target Review
@@ -65,7 +66,7 @@ func updateReviewHandler(w http.ResponseWriter, r *http.Request) {
 		if review.ReviewID == givenId {
 			err := json.NewDecoder(r.Body).Decode(&target)
 			if err != nil {
-				w.Write([]byte("error when unmarshaling"))
+				helper.ServerError(w)
 				return
 			}
 			reviews[i].ReviewID = givenId
@@ -79,11 +80,11 @@ func updateReviewHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Write([]byte("review not found"))
+	helper.NotFound(w)
 	return
 }
 
-func deleteReviewHandler(w http.ResponseWriter, r *http.Request) {
+func deleteReviewByReviewId(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	givenId := vars["id"]
 	for i, review := range reviews {
@@ -93,14 +94,14 @@ func deleteReviewHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Write([]byte("review not found"))
+	helper.NotFound(w)
 	return
 }
 
-func reviewHandler(w http.ResponseWriter, r *http.Request) {
+func getReviews(w http.ResponseWriter, r *http.Request) {
 	res, err := json.Marshal(reviews)
 	if err != nil {
-		w.Write([]byte("error when marshaling"))
+		helper.ServerError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -108,25 +109,24 @@ func reviewHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func createReviewHandler(w http.ResponseWriter, r *http.Request) {
+func addReview(w http.ResponseWriter, r *http.Request) {
 	uuid := uuid.New()
 	reviewId := uuid.String()
 
 	new := Review{}
 	err := json.NewDecoder(r.Body).Decode(&new)
 	if err != nil {
-		w.Write([]byte("error when parsing body"))
+		helper.ServerError(w)
 		return
 	}
 	new.ReviewID = reviewId
 	reviews = append(reviews, new)
 	// pass reviewId to user service
 	url := fmt.Sprintf("http://user-clusterip-srv:8000/users/%s/reviewid/%s", new.UserID, reviewId)
-	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", nil)
 	defer resp.Body.Close()
 	if err != nil {
-		w.Write([]byte("error when sending reviewId to user service"))
+		helper.ServerError(w)
 		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
