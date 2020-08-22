@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/tinytortoise-dev/cinefreaks/user/helper"
 )
 
 // User represents a single user information
@@ -50,7 +51,7 @@ func addUserReviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 	if !foundUser {
-		notFound(w)
+		helper.NotFound(w)
 		return
 	}
 	w.Write([]byte("review added"))
@@ -64,7 +65,7 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 		if userId == u.UserID {
 			res, err := json.Marshal(u.ReviewIds)
 			if err != nil {
-				serverError(w)
+				helper.ServerError(w)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -72,7 +73,7 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	notFound(w)
+	helper.NotFound(w)
 }
 
 func singleUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,12 +88,12 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !foundUser {
-		notFound(w)
+		helper.NotFound(w)
 		return
 	}
 	res, err := json.Marshal(user)
 	if err != nil {
-		serverError(w)
+		helper.ServerError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -101,14 +102,14 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/users" {
-		notFound(w)
+		helper.NotFound(w)
 		return
 	}
 
 	if r.Method == "GET" {
 		res, err := json.Marshal(users)
 		if err != nil {
-			serverError(w)
+			helper.ServerError(w)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -119,20 +120,19 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		var user User
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil {
-			serverError(w)
+			helper.ServerError(w)
 			return
 		}
 		data, err := duplicateUser(users, user)
 		if err != nil {
-			res := ErrorJsons{}
-			res.addMessageAndDataEntry(err.Error(), data)
-			res.jsonError(w, http.StatusBadRequest)
+			res := helper.ErrorJsons{}
+			res.AddMessageAndDataEntry(err.Error(), data)
+			res.JsonError(w, http.StatusBadRequest)
 			return
 		}
 		users = append(users, user)
 		w.Write([]byte("user created"))
 	}
-
 }
 
 func duplicateUser(users []User, user User) (string, error) {
@@ -145,78 +145,4 @@ func duplicateUser(users []User, user User) (string, error) {
 		}
 	}
 	return "", nil
-}
-
-func (e *ErrorJsons) addMessageAndDataEntry(message, data string) {
-	errJson := ErrorJson{}
-	errJson.setMessage(message)
-	errJson.setData(data)
-	e.addErrorJson(errJson)
-}
-
-func (e *ErrorJsons) addMessageEntry(message string) {
-	errJson := ErrorJson{}
-	errJson.setMessage(message)
-	e.addErrorJson(errJson)
-}
-
-func (e *ErrorJsons) jsonError(w http.ResponseWriter, code int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	b, err := json.Marshal(e)
-	if err != nil {
-		http.Error(w, "error when marshaling struct", http.StatusInternalServerError)
-	}
-	// json.NewEncoder(w).Encode(err)
-	http.Error(w, string(b), code)
-}
-
-func (e *ErrorJson) setMessage(message string) {
-	e.Message = message
-}
-
-func (e *ErrorJson) setData(data string) {
-	e.Data = data
-}
-
-// func (e ErrorJson) getErrorJson() ErrorJson {
-// 	return e
-// }
-
-func (e *ErrorJsons) addErrorJson(errorJson ErrorJson) {
-	e.Errors = append(e.Errors, errorJson)
-}
-
-// func (e ErrorJsons) getErrorJsons() ErrorJsons {
-// 	return e
-// }
-
-type ErrorJson struct {
-	Message string `json:"message"` // no space between json: and value
-	Data    string `json:"data"`    // optional
-}
-
-type ErrorJsons struct {
-	Errors []ErrorJson `json:"errors"`
-}
-
-func serverError(w http.ResponseWriter) {
-	res := ErrorJsons{}
-	res.addMessageEntry(http.StatusText(http.StatusInternalServerError))
-	res.jsonError(w, http.StatusInternalServerError)
-	return
-}
-
-func clientError(w http.ResponseWriter) {
-	res := ErrorJsons{}
-	res.addMessageEntry(http.StatusText(http.StatusBadRequest))
-	res.jsonError(w, http.StatusBadRequest)
-	return
-}
-
-func notFound(w http.ResponseWriter) {
-	res := ErrorJsons{}
-	res.addMessageEntry(http.StatusText(http.StatusNotFound))
-	res.jsonError(w, http.StatusNotFound)
-	return
 }
