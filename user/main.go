@@ -79,6 +79,7 @@ func userReviewsHandler(w http.ResponseWriter, r *http.Request) {
 func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	fmt.Println(id)
 	var user User
 	foundUser := false
 	for _, u := range users {
@@ -101,6 +102,7 @@ func singleUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("user handler was called")
 	if r.URL.Path != "/users" {
 		helper.NotFound(w)
 		return
