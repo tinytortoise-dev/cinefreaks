@@ -9,8 +9,27 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 )
+
+var client *redis.Client
+
+func init() {
+	dsn := os.Getenv("REDIS_DSN")
+	if len(dsn) == 0 {
+		dsn = "localhost:6379" // different containers mean different localhost
+	}
+	client = redis.NewClient(&redis.Options{
+		Addr: dsn,
+	})
+
+	_, err := client.Ping().Result()
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+}
 
 func main() {
 	r := mux.NewRouter()

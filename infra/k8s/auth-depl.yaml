@@ -12,7 +12,14 @@ spec:
       labels:
         app: auth
     spec:
+      shareProcessNamespace: true
       containers:
+        - name: redis
+          image: redis
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
         - name: auth
           image: ryoeishimaura/auth:latest
 ---
