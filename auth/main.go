@@ -11,6 +11,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+	"github.com/twinj/uuid"
 )
 
 var client *redis.Client
@@ -18,7 +19,7 @@ var client *redis.Client
 func init() {
 	dsn := os.Getenv("REDIS_DSN")
 	if len(dsn) == 0 {
-		dsn = "localhost:6379" // different containers mean different localhost
+		dsn = "localhost:6379"
 	}
 	client = redis.NewClient(&redis.Options{
 		Addr: dsn,
@@ -43,6 +44,15 @@ func main() {
 type UserCredentials struct {
 	UserId   string
 	Password string
+}
+
+type TokenDetails struct {
+	AccessToken  string
+	RefreshToken string
+	AccessUuid   string
+	RefreshUuid  string
+	AtExpires    int64
+	RtExpires    int64
 }
 
 func signin(w http.ResponseWriter, r *http.Request) {
@@ -99,16 +109,47 @@ func signin(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func createToken(userId string) (string, error) {
+func createToken(userId string) (*TokenDetails, error) {
+	td := &TokenDetails{}
+	td.AtExpires = time.Now().Add(time.Minute * 15).Unix()
+	td.AccessUuid = uuid.NewV4().String()
+
+	td.RtExpires = time.Now().Add(time.Hour * 24 * 7).Unix()
+	td.RefreshUuid = uuid.NewV4().String()
+
+	var err error
 	atClaims := jwt.MapClaims{}
 	atClaims["authorized"] = true
+	atClaims["access_uuid"] = td.AccessUuid
 	atClaims["user_id"] = userId
-	atClaims["exp"] = time.Now().Add(time.Minute * 15).Unix()
+	atClaims["exp"] = td.AtExpires
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	token, err := at.SignedString([]byte(os.Getenv("JWT_KEY")))
+	td.AccessToken, err = at.SignedString([]byte(os.Getenv("ACEESS_SECRET")))
 	if err != nil {
-		// error handling
-		return "", err
+		return nil, err
 	}
-	return token, nil
+
+	rtClaims := jwt.MapClaims{}
+	rtClaims["refresh_uuid"] = td.RefreshUuid
+	rtClaims["user_id"] = userId
+	rtClaims["exp"] = td.RtExpires
+	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
+	td.RefreshToken, err = rt.SignedString([]byte(os.Getenv("REFRESH_SECRET")))
+	if err != nil {
+		return nil, err
+	}
+
+	return td, nil
+
+	// atClaims := jwt.MapClaims{}
+	// atClaims["authorized"] = true
+	// atClaims["user_id"] = userId
+	// atClaims["exp"] = time.Now().Add(time.Minute * 15).Unix()
+	// at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
+	// token, err := at.SignedString([]byte(os.Getenv("JWT_KEY")))
+	// if err != nil {
+	// 	// error handling
+	// 	return "", err
+	// }
+	// return token, nil
 }
