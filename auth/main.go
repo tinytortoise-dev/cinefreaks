@@ -88,16 +88,25 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// create token by userId
-	token, err := createToken(incoming.UserId)
+	td, err := createToken(incoming.UserId)
 	if err != nil {
 		// error handling
 		w.Write([]byte("61"))
 		return
 	}
+
+	saveErr := CreateAuth(incoming.UserId, td)
+	if saveErr != nil {
+		// error handling
+		w.Write([]byte("61"))
+		return
+	}
+
 	// send the token back to client
 	var m map[string]string
 	m = make(map[string]string)
-	m["token"] = token
+	m["access_token"] = td.AccessToken
+	m["refresh_token"] = td.RefreshToken
 	json, err := json.Marshal(m)
 	if err != nil {
 		// error handling
@@ -107,6 +116,24 @@ func signin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
 	return
+}
+
+func CreateAuth(userId string, td *TokenDetails) error {
+	at := time.Unix(td.AtExpires, 0) // unix to UTC
+	rt := time.Unix(td.RtExpires, 0)
+	now := time.Now()
+
+	errAccess := client.Set(td.AccessUuid, userId, at.Sub(now)).Err()
+	if errAccess != nil {
+		return errAccess
+	}
+
+	errRefresh := client.Set(td.RefreshUuid, userId, rt.Sub(now)).Err()
+	if errRefresh != nil {
+		return errRefresh
+	}
+
+	return nil
 }
 
 func createToken(userId string) (*TokenDetails, error) {
