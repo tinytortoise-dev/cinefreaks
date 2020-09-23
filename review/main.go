@@ -29,10 +29,10 @@ var reviews []Review
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/reviews/{id}", getReviewByReviewId).Methods("GET")
-	r.HandleFunc("/reviews/{id}", updateReviewByReviewId).Methods("PUT")
-	r.HandleFunc("/reviews/{id}", deleteReviewByReviewId).Methods("DELETE")
+	r.HandleFunc("/reviews/{id}", updateReviewByReviewId).Methods("PUT")    // need verification
+	r.HandleFunc("/reviews/{id}", deleteReviewByReviewId).Methods("DELETE") // need verification
 	r.HandleFunc("/reviews", getReviews).Methods("GET")
-	r.HandleFunc("/reviews", addReview).Methods("POST")
+	r.HandleFunc("/reviews", addReview).Methods("POST") // need verification
 	http.Handle("/", r)
 
 	fmt.Println("review service server started on port 8001")

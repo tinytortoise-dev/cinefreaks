@@ -35,6 +35,8 @@ func init() {
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth/signin", signin).Methods("POST")
+	// r.HandleFunc("/auth/verify/{userId}", verify).Methods("GET")
+	// r.HandleFunc("/auth/logout", logout).Methods("POST")
 	http.Handle("/", r)
 
 	fmt.Println("auth service server started on port 8002")
