@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -36,7 +37,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth/signin", signin).Methods("POST")
 	// r.HandleFunc("/auth/verify/{userId}", verify).Methods("GET")
-	// r.HandleFunc("/auth/logout", logout).Methods("POST")
+	// r.HandleFunc("/auth/logout", signout).Methods("POST")
 	http.Handle("/", r)
 
 	fmt.Println("auth service server started on port 8002")
@@ -181,4 +182,112 @@ func createToken(userId string) (*TokenDetails, error) {
 	// 	return "", err
 	// }
 	// return token, nil
+}
+
+func extractToken(r *http.Request) string {
+	bearToken := r.Header.Get("Authorization")
+	strArr := strings.Split(bearToken, " ")
+	if len(strArr) == 2 {
+		return strArr[1]
+	}
+	return ""
+}
+
+func verifyToken(r *http.Request) (*jwt.Token, error) {
+	tokenString := extractToken(r)
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(os.Getenv("ACCESS_SECRET")), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+func isTokenValid(r *http.Request) error {
+	token, err := verifyToken(r)
+	if err != nil {
+		return err
+	}
+	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
+		return err
+	}
+	return nil
+}
+
+type AccessDetails struct {
+	AccessUuid string
+	UserId     string
+}
+
+func extractTokenMetaData(r *http.Request) (*AccessDetails, error) {
+	token, err := verifyToken(r)
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if ok && token.Valid {
+		accessUuid, ok := claims["access_uuid"].(string)
+		if !ok {
+			return nil, err
+		}
+		userId, ok := claims["user_id"].(string)
+		if !ok {
+			return nil, err
+		}
+		return &AccessDetails{
+			AccessUuid: accessUuid,
+			UserId:     userId,
+		}, nil
+	}
+
+	return nil, err
+}
+
+func fetchAuth(authD *AccessDetails) (string, error) {
+	userid, err := client.Get(authD.AccessUuid).Result()
+	if err != nil {
+		return "", err
+	}
+	return userid, nil
+}
+
+func verify(w http.ResponseWriter, r *http.Request) {
+	tokenAuth, err := extractTokenMetaData(r)
+	if err != nil {
+		// error handling
+		return
+	}
+	_, err = fetchAuth(tokenAuth)
+	if err != nil {
+		// error handling
+		w.Write([]byte("unauthorized"))
+		return
+	}
+	w.Write([]byte("successfully verified!"))
+}
+
+func deleteAuth(uuid string) (int64, error) {
+	deleted, err := client.Del(uuid).Result()
+	if err != nil {
+		return 0, err
+	}
+	return deleted, nil
+}
+
+func signout(w http.ResponseWriter, r *http.Request) {
+	au, err := extractTokenMetaData(r)
+	if err != nil {
+		w.Write([]byte("unauthorized"))
+		return
+	}
+	deleted, delErr := deleteAuth(au.AccessUuid)
+	if delErr != nil || deleted == 0 {
+		w.Write([]byte("unauthorized"))
+		return
+	}
+	w.Write([]byte("successfully signed out"))
 }
