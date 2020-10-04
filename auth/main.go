@@ -36,8 +36,8 @@ func init() {
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth/signin", signin).Methods("POST")
-	// r.HandleFunc("/auth/verify/{userId}", verify).Methods("GET")
-	// r.HandleFunc("/auth/logout", signout).Methods("POST")
+	r.HandleFunc("/auth/verify/{userId}", verify).Methods("GET")
+	r.HandleFunc("/auth/logout", signout).Methods("POST")
 	http.Handle("/", r)
 
 	fmt.Println("auth service server started on port 8002")
@@ -290,4 +290,15 @@ func signout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte("successfully signed out"))
+}
+
+func tokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := isTokenValid(r)
+		if err != nil {
+			http.Error(w, "unauthorized from middleware", http.StatusBadRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
