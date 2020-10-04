@@ -12,3 +12,5 @@ build:
       context: user
     - image: ryoeishimaura/review
       context: review
+    - image: ryoeishimaura/auth
+      context: auth

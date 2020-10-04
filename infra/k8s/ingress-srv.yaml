@@ -17,3 +17,7 @@ spec:
             backend:
               serviceName: review-clusterip-srv
               servicePort: 8001
+          - path: /auth
+            backend:
+              serviceName: auth-clusterip-srv
+              servicePort: 8002
